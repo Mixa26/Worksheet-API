@@ -20,14 +20,83 @@ def open_sheet(sheetNumber)
   $currentSheet = sheetNumber
 end
 
+def is_number?(str)
+  true if Float(str) rescue false
+end
+
+class Column
+  include Enumerable
+
+  def initialize(name, index, column, table)
+    @name = name
+    @index = index
+    @column = column
+    @table = table
+  end
+
+  def method_missing(method, *args)
+    index = -1
+    (0..@column.size-1).each do |row|
+      if method.to_s == @column[row]
+        index = row 
+        break
+      end
+    end
+    @table.table[index+1] unless index == -1
+  end
+
+  def each
+    (0..@column.size-1).each do |row|
+      yield @column[row].to_i
+    end
+  end
+
+  def [](row)
+    @column[row]
+  end
+
+  def []=(row,val)
+    @table.table[row][@index] = val
+    #value can be updated on the server here
+    #1.first save the current worksheet
+    #2.add a attr_reader :worksheet to the class
+    #Table
+    #3.load up the worksheet from table by using
+    #open_sheet(@table.worksheet)
+    #4.use $ws.save here
+    #5.and now load up the old worksheet you saved
+    #in step 1
+  end
+
+  def sum
+    sum = 0
+    (0..@column.size-1).each do |row| 
+      sum += @column[row].to_i if is_number?(@column[row])
+    end
+    sum
+  end
+
+  def avg
+    self.sum.to_f / @column.size.to_f
+  end
+
+  def to_s
+    print @column
+  end
+end
+
 class Table
   include Enumerable
 
-  attr_accessor :table
+  attr_reader :table
 
   def initialize(worksheet)
     @worksheet = worksheet
     @table = []
+  end
+
+  def method_missing(method, *args)
+    self[method.to_s]
   end
 
   def each
@@ -154,6 +223,24 @@ class Table
     table_return
   end
 
+  def get_col_index(col_name)
+    (0..@table[0].size-1).each do |col|
+      return col if @table[0][col] == col_name
+    end
+    -1
+  end
+
+  def [](col_name)
+    index = get_col_index(col_name)
+    return -1 if index == -1
+    
+    dummy_col = []
+    (1..@table.size-1).each do |row|
+      dummy_col[row-1] = @table[row][index]
+    end
+    Column.new(col_name, index, dummy_col, self)
+  end
+
   def print_contents
     @table.each do |row|
       print "#{row}\n"
@@ -163,9 +250,4 @@ end
 
 table = Table.new($currentSheet)
 table.load_table
-open_sheet(1)
-table1 = Table.new($currentSheet)
-table1.load_table
-table2 = table-table1
-table2.print_contents
-
+print table.header2.reduce(0) { |sum, num| sum + num }
