@@ -88,7 +88,7 @@ end
 class Table
   include Enumerable
 
-  attr_reader :table
+  attr_accessor :table
 
   def initialize(worksheet)
     @worksheet = worksheet
@@ -130,7 +130,7 @@ class Table
     false
   end
 
-  def  get_row(table_col_pos, row)
+  def get_row(table_col_pos, row)
     dummy_row = []
     (table_col_pos..$ws.num_cols).each do |col|
       dummy_row[col-table_col_pos] = $ws[row, col]
@@ -168,8 +168,8 @@ class Table
   end
 
   def headers_equal?(table1, table2)
-    return false unless table1.size == table2.size
-    (0..table1.size).each do |col|
+    return false unless table1[0].size == table2[0].size
+    (0..table1[0].size-1).each do |col|
       return false unless table1[0][col] == table2[0][col]
     end
     true
@@ -180,26 +180,18 @@ class Table
 
     table_result = []
     result_row = 0
-    
     (0..@table.size-2).each do |row|
-      dummy_row = []
-      (0..@table[0].size-1).each do |col|
-        dummy_row[col] = @table[row+1][col]
-      end
-      table_result[result_row] = dummy_row
+      table_result[result_row] = @table[row]
+      
       result_row += 1
     end
-
+    
     (0..table.table.size-2).each do |row|
-      dummy_row = []
-      (0..table.table[0].size-1).each do |col|
-        dummy_row[col] = table.table[row+1][col]
-      end
-      next if row_exists?(table_result, dummy_row)
-      table_result[result_row] = dummy_row
+      next if row_exists?(table_result, table.table[row])
+      table_result[result_row] = table.table[row]
       result_row += 1
     end    
-
+  
     table_return = Table.new(-1)
     table_return.table = table_result
     table_return
@@ -209,9 +201,10 @@ class Table
     return Table.new(-1) unless headers_equal?(@table, table.table)
 
     table_result = []
-    result_row = 0
+    result_row = 1
     
-    (0..@table.size-1).each do |row|
+    table_result[0] = @table[0]
+    (1..@table.size-1).each do |row|
       unless row_exists?(table.table, @table[row])
         table_result[result_row] = @table[row]
         result_row += 1
@@ -247,7 +240,3 @@ class Table
     end
   end
 end
-
-table = Table.new($currentSheet)
-table.load_table
-print table.header2.reduce(0) { |sum, num| sum + num }
